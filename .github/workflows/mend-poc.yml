@@ -4,7 +4,7 @@ on:
 
 jobs:
   load-test:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: eks-runner
     strategy:
       matrix:
         size: [small, medium, large]
