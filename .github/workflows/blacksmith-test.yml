@@ -9,7 +9,7 @@ jobs:
       matrix:
         runner_id: [1, 2, 3, 4]
 
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-
 
     steps:
       - name: Checkout Repository
