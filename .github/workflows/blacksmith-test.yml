@@ -1,0 +1,26 @@
+name: Blacksmith Multi Runner Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  parallel-test:
+    strategy:
+      matrix:
+        runner_id: [1, 2, 3, 4]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Print Runner Info
+        run: |
+          echo "Runner ID: ${{ matrix.runner_id }}"
+          hostname
+          free -h
+          nproc
+
+      - name: Simulate Workload
+        run: sleep 300

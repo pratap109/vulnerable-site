@@ -1,7 +1,7 @@
 name: Build site, deploy to Azure, scan with Dastardly
 
 on:
-  push:
+  workflow_dispatch:
     branches:
       - main
   workflow_dispatch:

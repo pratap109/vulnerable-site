@@ -1,0 +1,81 @@
+name: Mend POC
+on:
+  workflow_dispatch:
+    inputs:
+      size:
+        description: 'Scan size to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - small
+          - medium
+          - large
+
+jobs:
+  mend-scan:
+    runs-on: eks-runner
+    strategy:
+      matrix:
+        size: [small, medium, large]
+      fail-fast: false  # don't cancel others if one fails
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set scan parameters
+        id: params
+        run: |
+          case "${{ matrix.size }}" in
+            small)
+              echo "deps=10"         >> $GITHUB_OUTPUT
+              echo "sleep=10"        >> $GITHUB_OUTPUT
+              echo "memory=100"      >> $GITHUB_OUTPUT
+              echo "vulns=2 LOW"     >> $GITHUB_OUTPUT
+              ;;
+            medium)
+              echo "deps=100"        >> $GITHUB_OUTPUT
+              echo "sleep=30"        >> $GITHUB_OUTPUT
+              echo "memory=300"      >> $GITHUB_OUTPUT
+              echo "vulns=5 MEDIUM, 1 HIGH" >> $GITHUB_OUTPUT
+              ;;
+            large)
+              echo "deps=500"        >> $GITHUB_OUTPUT
+              echo "sleep=60"        >> $GITHUB_OUTPUT
+              echo "memory=500"      >> $GITHUB_OUTPUT
+              echo "vulns=12 MEDIUM, 4 HIGH, 1 CRITICAL" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Run ${{ matrix.size }} scan
+        run: |
+          echo "=== ${{ matrix.size }} IMAGE SCAN ==="
+          echo "Scanning ${{ steps.params.outputs.deps }} dependencies..."
+          sleep ${{ steps.params.outputs.sleep }}
+          echo "Vulnerabilities: ${{ steps.params.outputs.vulns }}"
+
+      - name: Stress test memory (${{ matrix.size }})
+        run: |
+          python3 -c "
+          import time
+          mb = ${{ steps.params.outputs.memory }}
+          data = bytearray(mb * 1024 * 1024)
+          print(f'Allocated {mb}MB successfully')
+          time.sleep(5)
+          print('Memory stable — releasing')
+          "
+
+      - name: Resource snapshot
+        run: |
+          echo "--- Node Resources ---"
+          free -m
+          nproc
+          cat /proc/meminfo | grep -E "MemTotal|MemAvailable"
+
+      - name: Summary
+        run: |
+          echo "✅ ${{ matrix.size }} scan complete"
+          echo "Deps scanned : ${{ steps.params.outputs.deps }}"
+          echo "Memory used  : ${{ steps.params.outputs.memory }}MB"
+          echo "Vulns found  : ${{ steps.params.outputs.vulns }}"

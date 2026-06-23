@@ -1,0 +1,82 @@
+name: Mend POC Load Test
+on:
+  workflow_dispatch:
+
+jobs:
+  load-test:
+    runs-on: eks-runner
+    strategy:
+      matrix:
+        size: [small, medium, large]
+      fail-fast: false
+
+    steps:
+      - name: Install stress-ng
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq stress-ng
+
+      - name: Set scan parameters
+        id: params
+        run: |
+          case "${{ matrix.size }}" in
+            small)
+              echo "cpu_workers=1"    >> $GITHUB_OUTPUT
+              echo "cpu_load=30"      >> $GITHUB_OUTPUT
+              echo "memory_mb=100"    >> $GITHUB_OUTPUT
+              echo "duration=40"      >> $GITHUB_OUTPUT
+              echo "deps=10"          >> $GITHUB_OUTPUT
+              echo "vulns=2 LOW"      >> $GITHUB_OUTPUT
+              ;;
+            medium)
+              echo "cpu_workers=2"    >> $GITHUB_OUTPUT
+              echo "cpu_load=50"      >> $GITHUB_OUTPUT
+              echo "memory_mb=200"    >> $GITHUB_OUTPUT
+              echo "duration=40"      >> $GITHUB_OUTPUT
+              echo "deps=100"         >> $GITHUB_OUTPUT
+              echo "vulns=5 MEDIUM, 1 HIGH" >> $GITHUB_OUTPUT
+              ;;
+            large)
+              echo "cpu_workers=2"    >> $GITHUB_OUTPUT
+              echo "cpu_load=80"      >> $GITHUB_OUTPUT
+              echo "memory_mb=350"    >> $GITHUB_OUTPUT
+              echo "duration=40"      >> $GITHUB_OUTPUT
+              echo "deps=500"         >> $GITHUB_OUTPUT
+              echo "vulns=12 MEDIUM, 4 HIGH, 1 CRITICAL" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Simulate Mend scan - CPU + Memory stress
+        run: |
+          echo "=== ${{ matrix.size }} MEND SCAN ==="
+          echo "Scanning ${{ steps.params.outputs.deps }} dependencies..."
+
+          # Run CPU and memory stress simultaneously
+          stress-ng \
+            --cpu ${{ steps.params.outputs.cpu_workers }} \
+            --cpu-load ${{ steps.params.outputs.cpu_load }} \
+            --vm 1 \
+            --vm-bytes ${{ steps.params.outputs.memory_mb }}M \
+            --vm-keep \
+            --timeout ${{ steps.params.outputs.duration }}s \
+            --metrics-brief
+          
+          echo "Vulnerabilities found: ${{ steps.params.outputs.vulns }}"
+
+      - name: Resource snapshot (post scan)
+        run: |
+          echo "--- [${{ matrix.size }}] Resource usage after scan ---"
+          free -m
+          echo "CPUs available: $(nproc)"
+          cat /proc/meminfo | grep -E "MemTotal|MemAvailable|MemFree"
+
+      - name: Summary
+        run: |
+          echo "==============================="
+          echo "✅ ${{ matrix.size }} scan complete"
+          echo "Dependencies scanned : ${{ steps.params.outputs.deps }}"
+          echo "CPU workers used     : ${{ steps.params.outputs.cpu_workers }}"
+          echo "CPU load target      : ${{ steps.params.outputs.cpu_load }}%"
+          echo "Memory allocated     : ${{ steps.params.outputs.memory_mb }}MB"
+          echo "Vulns found          : ${{ steps.params.outputs.vulns }}"
+          echo "==============================="
