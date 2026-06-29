@@ -5,5 +5,4 @@ A vulnerable .NET website for testing integration with [Dastardly from Burp Suit
 
 PR test 2
 new feature 1
-Testing Merge Queue POC
-Pr test 3
+
