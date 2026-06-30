@@ -6,3 +6,4 @@ A vulnerable .NET website for testing integration with [Dastardly from Burp Suit
 PR test 2
 new feature 1
 
+the latest merge
